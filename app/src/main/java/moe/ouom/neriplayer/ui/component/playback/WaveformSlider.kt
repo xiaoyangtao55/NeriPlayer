@@ -28,7 +28,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
@@ -47,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -174,42 +172,22 @@ fun WaveformSlider(
         }
     }
 
-    val dragModifier = if (enabled) {
-        Modifier.pointerInput(
-            onValueChange,
-            onValueChangeFinished,
-            onValueChangeStarted,
-            onValueChangeCanceled
-        ) {
-            detectDragGestures(
-                onDragStart = { offset ->
-                    isDragging = true
-                    val width = size.width.toFloat()
-                    if (width > 0f) {
-                        val startValue = (offset.x / width).coerceIn(0f, 1f)
-                        onValueChangeStarted(startValue)
-                    }
-                },
-                onDragEnd = {
-                    isDragging = false
-                    onValueChangeFinished()
-                },
-                onDragCancel = {
-                    isDragging = false
-                    onValueChangeCanceled()
-                },
-                onDrag = { change, _ ->
-                    val width = size.width.toFloat()
-                    if (width > 0f) {
-                        val newValue = (change.position.x / width).coerceIn(0f, 1f)
-                        onValueChange(newValue)
-                    }
-                }
-            )
+    val dragModifier = Modifier.seekGestureInput(
+        enabled = enabled,
+        onValueChangeStarted = { startValue ->
+            isDragging = true
+            onValueChangeStarted(startValue)
+        },
+        onValueChange = onValueChange,
+        onValueChangeFinished = {
+            isDragging = false
+            onValueChangeFinished()
+        },
+        onValueChangeCanceled = {
+            isDragging = false
+            onValueChangeCanceled()
         }
-    } else {
-        Modifier
-    }
+    )
     val wavePath = remember { Path() }
 
     Canvas(

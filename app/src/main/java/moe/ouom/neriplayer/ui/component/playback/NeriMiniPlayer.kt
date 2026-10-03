@@ -100,7 +100,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 object NeriMiniPlayerDefaults {
     val Height = 64.dp
-    internal val ContentVerticalPadding = 8.dp
+    internal val MetadataTopPadding = 4.dp
+    internal val SeekBarHeight = 12.dp
+    internal val MetadataRowHeight = Height - SeekBarHeight
 }
 
 private const val MINI_PLAYER_COVER_CLEAR_DELAY_MS = 900L
@@ -448,7 +450,10 @@ fun NeriMiniPlayer(
     visualCoverUrl: String? = null,
     coverIdentityKey: String? = null,
     visualCoverIdentityKey: String? = null,
-    hasCurrentSong: Boolean = true
+    hasCurrentSong: Boolean = true,
+    seekProgressFraction: Float? = null,
+    seekEnabled: Boolean = true,
+    onSeek: (Float) -> Unit = {}
 ) {
     val shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     val context = LocalContext.current
@@ -687,6 +692,11 @@ fun NeriMiniPlayer(
         }
     }
 
+    val showSeekBar = seekProgressFraction != null && hasCurrentSong
+    val seekContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+    val seekActiveColor = if (seekEnabled) seekContentColor else seekContentColor.copy(alpha = 0.38f)
+    val seekTrackColor = seekContentColor.copy(alpha = if (seekEnabled) 0.24f else 0.12f)
+
     AdvancedGlassSurface(
         role = AdvancedGlassRole.MiniPlayer,
         modifier = modifier
@@ -766,9 +776,11 @@ fun NeriMiniPlayer(
                         scaleX = 1f - offsetRatio * 0.025f
                         scaleY = 1f - offsetRatio * 0.025f
                     }
+                    .height(NeriMiniPlayerDefaults.MetadataRowHeight)
                     .padding(
-                        horizontal = 12.dp,
-                        vertical = NeriMiniPlayerDefaults.ContentVerticalPadding
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = NeriMiniPlayerDefaults.MetadataTopPadding
                     )
             ) {
                 Box(
@@ -909,6 +921,17 @@ fun NeriMiniPlayer(
                         progressStrokeWidth = 2.dp
                     )
                 }
+            }
+
+            if (showSeekBar) {
+                MiniPlayerSeekBar(
+                    progressFraction = seekProgressFraction ?: 0f,
+                    enabled = seekEnabled,
+                    onSeek = onSeek,
+                    activeColor = seekActiveColor,
+                    trackColor = seekTrackColor,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
             }
         }
     }

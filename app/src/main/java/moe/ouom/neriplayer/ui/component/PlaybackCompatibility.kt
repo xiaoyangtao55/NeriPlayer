@@ -26,7 +26,10 @@ fun NeriMiniPlayer(
     visualCoverUrl: String? = null,
     coverIdentityKey: String? = null,
     visualCoverIdentityKey: String? = null,
-    hasCurrentSong: Boolean = true
+    hasCurrentSong: Boolean = true,
+    seekProgressFraction: Float? = null,
+    seekEnabled: Boolean = true,
+    onSeek: (Float) -> Unit = {}
 ) {
     moe.ouom.neriplayer.ui.component.playback.NeriMiniPlayer(
         title = title,
@@ -46,7 +49,10 @@ fun NeriMiniPlayer(
         visualCoverUrl = visualCoverUrl,
         coverIdentityKey = coverIdentityKey,
         visualCoverIdentityKey = visualCoverIdentityKey,
-        hasCurrentSong = hasCurrentSong
+        hasCurrentSong = hasCurrentSong,
+        seekProgressFraction = seekProgressFraction,
+        seekEnabled = seekEnabled,
+        onSeek = onSeek
     )
 }
 

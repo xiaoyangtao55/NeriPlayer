@@ -376,6 +376,7 @@ private fun AppMiniPlayerOverlay(
     onBoundsChanged: (Rect) -> Unit
 ) {
     val controls = rememberMiniPlayerPlaybackControls()
+    val seekControl = rememberAppMiniPlayerSeekControl()
     val resources = LocalResources.current
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedVisibility(
@@ -417,7 +418,10 @@ private fun AppMiniPlayerOverlay(
                     isPlaying = controls.playing,
                     usbPlaybackPreparing = controls.usbPreparing
                 ),
-                isAudioRouteMuted = controls.routeMuted
+                isAudioRouteMuted = controls.routeMuted,
+                seekProgressFraction = seekControl.progressFraction,
+                seekEnabled = seekControl.enabled,
+                onSeek = seekControl.onSeek
             )
         }
     }
