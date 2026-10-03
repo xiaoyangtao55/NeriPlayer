@@ -922,17 +922,20 @@ fun NeriMiniPlayer(
                     )
                 }
             }
+        }
 
-            if (showSeekBar) {
-                MiniPlayerSeekBar(
-                    progressFraction = seekProgressFraction ?: 0f,
-                    enabled = seekEnabled,
-                    onSeek = onSeek,
-                    activeColor = seekActiveColor,
-                    trackColor = seekTrackColor,
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                )
-            }
+        // 作为玻璃表面 Box 的子项贴在卡片底部：这里只有 BoxScope 一个隐式接收者，
+        // 不会与 Card 内容的 ColumnScope 形成 Modifier.align 的歧义；
+        // 元数据行固定占 52dp，进度条正好落在预留的底部 12dp。
+        if (showSeekBar) {
+            MiniPlayerSeekBar(
+                progressFraction = seekProgressFraction ?: 0f,
+                enabled = seekEnabled,
+                onSeek = onSeek,
+                activeColor = seekActiveColor,
+                trackColor = seekTrackColor,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
