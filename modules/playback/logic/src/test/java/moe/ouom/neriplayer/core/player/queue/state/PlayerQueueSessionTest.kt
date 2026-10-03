@@ -95,6 +95,58 @@ class PlayerQueueSessionTest {
     }
 
     @Test
+    fun `playback shuffle redraws instead of repeating the published order`() {
+        val store = store()
+        store.setShuffleMode(true)
+        val first = store.startPlayback(
+            PlayerQueueSnapshot.from(songs, 1),
+            shuffleLocally = true
+        ) { it.reverse() }
+        assertEquals(listOf(2L, 3L, 1L), first.playlist.map { it.id })
+
+        // 第一次抽签与已发布顺序完全相同，必须重抽到不同顺序
+        var draw = 0
+        val redrawn = store.startPlayback(
+            PlayerQueueSnapshot.from(songs, 1),
+            shuffleLocally = true
+        ) { remaining ->
+            if (draw++ == 0) remaining.reverse() else remaining.sort()
+        }
+
+        assertEquals(listOf(2L, 1L, 3L), redrawn.playlist.map { it.id })
+        assertEquals(0, redrawn.currentIndex)
+    }
+
+    @Test
+    fun `playback shuffle keeps the last draw when the source repeats one order`() {
+        val store = PlayerQueueStateStore(TestQueueSongIdentity).also { it.publish(songs, 0) }
+        store.setShuffleMode(true)
+
+        // 洗牌源永远给出同一顺序：重抽上限用尽后接受最后一次抽签，不会卡住或报错
+        val redrawn = store.startPlayback(
+            PlayerQueueSnapshot.from(songs, 0),
+            shuffleLocally = true
+        ) { }
+
+        assertEquals(listOf(1L, 2L, 3L), redrawn.playlist.map { it.id })
+        assertEquals(0, redrawn.currentIndex)
+    }
+
+    @Test
+    fun `enabling shuffle redraws when the first draw keeps the published order`() {
+        val store = PlayerQueueStateStore(TestQueueSongIdentity).also { it.publish(songs, 0) }
+        var draw = 0
+
+        store.setLocalShuffle(true, songs[0]) { remaining ->
+            if (draw++ == 0) Unit else remaining.reverse()
+        }
+
+        assertEquals(listOf(1L, 3L, 2L), store.snapshot().playlist.map { it.id })
+        assertEquals(0, store.snapshot().currentIndex)
+        assertEquals(listOf(1L, 2L, 3L), store.sessionSnapshot().shuffleRestore?.playlist?.map { it.id })
+    }
+
+    @Test
     fun `remote playlist start keeps its order and clears local restore data`() {
         val store = store()
         store.setLocalShuffle(true, songs[1]) { it.reverse() }

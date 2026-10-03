@@ -7,6 +7,9 @@ import moe.ouom.neriplayer.data.model.playback.queue.PlayerQueueSnapshot
 import moe.ouom.neriplayer.core.player.queue.policy.PlayerQueueNavigationOwner
 import moe.ouom.neriplayer.data.model.SongItem
 
+/** 抽到与当前已发布队列相同的顺序时最多重抽的次数（含首次抽签） */
+private const val MAX_SHUFFLE_REDRAW_ATTEMPTS = 8
+
 class PlayerQueueStateStore(private val identity: QueueSongIdentity) {
     private val lock = Any()
     @Volatile
@@ -85,7 +88,7 @@ class PlayerQueueStateStore(private val identity: QueueSongIdentity) {
         if (enabled == current.shuffleEnabled) return@synchronized null
         val restore = if (enabled) captureRestore(current.queue) else null
         val updated = if (enabled) {
-            PlayerQueueNavigationOwner.sequentialShuffle(current.queue, shuffleRemaining)
+            shuffleAvoidingPublishedOrder(current.queue, shuffleRemaining)
         } else {
             PlayerQueueNavigationOwner.restoreShuffleOrder(
                 current.queue, current.shuffleRestore?.playlist, currentSong,
@@ -104,10 +107,41 @@ class PlayerQueueStateStore(private val identity: QueueSongIdentity) {
         val shouldShuffle = current.shuffleEnabled && shuffleLocally
         val restore = if (shouldShuffle) captureRestore(queue) else null
         val next = if (shouldShuffle) {
-            PlayerQueueNavigationOwner.sequentialShuffle(queue, shuffleRemaining) ?: queue
+            shuffleAvoidingPublishedOrder(queue, shuffleRemaining) ?: queue
         } else queue
         publishLocked(PlayerQueueSessionSnapshot(next, current.shuffleEnabled, restore))
         next
+    }
+
+    /**
+     * 洗牌并避免抽到与当前已发布队列相同的顺序。
+     *
+     * 同一歌单连续两次「随机播放」抽到完全相同的顺序是最容易被察觉的随机性问题：上一次的顺序此时
+     * 就在队列里，重抽到不同顺序为止即可（顺序规模很小时命中概率极低，上限只作为防御）。
+     * 洗牌返回 null 表示这次抽签没有改变队列，按入参顺序参与比较。
+     */
+    private fun shuffleAvoidingPublishedOrder(
+        queue: PlayerQueueSnapshot,
+        shuffleRemaining: (MutableList<Int>) -> Unit
+    ): PlayerQueueSnapshot? {
+        if (queue.playlist.isEmpty()) return null
+        val publishedOrderKeys = current.queue.playlist.map(identity::stableKey)
+        var candidate = drawnOrderOrInput(queue, shuffleRemaining)
+        repeat(MAX_SHUFFLE_REDRAW_ATTEMPTS - 1) {
+            if (!sameSongOrder(candidate.playlist, publishedOrderKeys)) return candidate
+            candidate = drawnOrderOrInput(queue, shuffleRemaining)
+        }
+        return candidate
+    }
+
+    private fun drawnOrderOrInput(
+        queue: PlayerQueueSnapshot,
+        shuffleRemaining: (MutableList<Int>) -> Unit
+    ): PlayerQueueSnapshot = PlayerQueueNavigationOwner.sequentialShuffle(queue, shuffleRemaining) ?: queue
+
+    private fun sameSongOrder(playlist: List<SongItem>, orderKeys: List<String>): Boolean {
+        if (playlist.size != orderKeys.size) return false
+        return playlist.withIndex().all { (index, song) -> identity.stableKey(song) == orderKeys[index] }
     }
 
     fun restoreSession(

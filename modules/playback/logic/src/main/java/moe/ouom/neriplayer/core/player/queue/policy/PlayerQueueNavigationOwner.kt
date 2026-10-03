@@ -147,6 +147,12 @@ object PlayerQueueNavigationOwner {
         return PlayerQueueSnapshot.from(latestSongs, index)
     }
 
+    /**
+     * 顺序播放列表洗牌：当前曲固定首位，其余随机。
+     *
+     * 返回 null 表示这次洗牌没有改变队列（单曲/空队列，或抽到的顺序与入参一致），调用方据此沿用原队列；
+     * 需要「避免与上一次顺序相同」的调用方（PlayerQueueStateStore）把 null 当作「抽到了入参顺序」并继续重抽。
+     */
     internal fun sequentialShuffle(
         queue: PlayerQueueSnapshot,
         shuffleRemaining: (MutableList<Int>) -> Unit = { it.shuffle() },
